@@ -397,11 +397,28 @@
          beim zweiten Anlauf stumm. */
       schonGeantwortet = false;
 
-      sage(kennwortGemerkt()
-        ? 'Kennwort hinterlegt · warte auf das Cockpit …'
-        : 'Kein Kennwort hinterlegt · Anmeldung wie gewohnt');
+      /*
+       * Die Kennwörter gehen in der Adresse mit - derselbe Weg wie
+       * bei der Vorauswahl in Rp. und OPs. Der Nachrichtenaustausch
+       * zwischen den Rahmen bleibt zusätzlich bestehen, falls die
+       * Adresse einmal nicht durchkommt.
+       */
+      var wort = kennwortGemerkt();
+      var ziel = adresse;
 
-      document.getElementById('cockpit').src = adresse;
+      if (wort) {
+        var trenner = ziel.indexOf('?') === -1 ? '?' : '&';
+
+        ziel += trenner + 'k=' + encodeURIComponent(wort) +
+                '&kw=' + encodeURIComponent(werkzeugKennwortGemerkt() || wort) +
+                '&ks=' + encodeURIComponent(schlafKennwortGemerkt() || '');
+
+        sage('Kennwörter hinterlegt · melde an …');
+      } else {
+        sage('Kein Kennwort hinterlegt · Anmeldung wie gewohnt');
+      }
+
+      document.getElementById('cockpit').src = ziel;
     }
 
     function frage() {
