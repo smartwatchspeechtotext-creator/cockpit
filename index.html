@@ -203,18 +203,15 @@
 
     #lage.weg { opacity: 0; }
 
-    /* Winziger Griff, um die Adresse später zu ändern. */
-    #aendern {
-      position: fixed;
-      right: 4px;
-      bottom: 4px;
-      z-index: 15;
-      width: 26px;
-      height: 26px;
-      opacity: 0;
-      background: none;
-      border: 0;
+    /* Die Einstellungen sind über die Statuszeile erreichbar, die
+       beim Start kurz erscheint. Vorher lag hier ein unsichtbarer
+       Griff in der unteren Ecke - der hat Klicks abgefangen, die
+       dem Cockpit galten. */
+    #lage.tippbar {
+      pointer-events: auto;
       cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
   </style>
 </head>
@@ -278,8 +275,6 @@
     allow="clipboard-write; clipboard-read; microphone"
     referrerpolicy="no-referrer-when-downgrade"></iframe>
 
-  <button id="aendern" type="button" title="Adresse ändern"
-    aria-label="Adresse ändern"></button>
 
   <script>
     var ORT = 'cockpit_adresse';
@@ -381,13 +376,15 @@
       var el = document.getElementById('lage');
       if (!el) { return; }
 
-      el.textContent = text;
+      el.textContent = text + '   ·   Einstellungen';
       el.classList.remove('weg');
+      el.classList.add('tippbar');
 
       clearTimeout(sage.uhr);
       sage.uhr = window.setTimeout(function () {
         el.classList.add('weg');
-      }, 6000);
+        el.classList.remove('tippbar');
+      }, 8000);
     }
 
     function starte(adresse) {
@@ -525,9 +522,10 @@
       });
     }
 
-    /* Unsichtbarer Griff unten rechts, falls sich die Adresse
-       einmal ändert - etwa nach einer neuen Bereitstellung. */
-    document.getElementById('aendern').addEventListener('click', frage);
+    /* Die Statuszeile beim Start ist der Weg in die Einstellungen.
+       Sie liegt nur wenige Sekunden über dem Bild und verschwindet
+       dann samt ihrer Klickfläche. */
+    document.getElementById('lage').addEventListener('click', frage);
 
     var adresse = gemerkt() || VORGABE;
 
