@@ -248,7 +248,17 @@
       <input id="kennwort" type="text" class="verdeckt"
         autocomplete="off" autocapitalize="off" spellcheck="false"
         name="cockpit-geraet"
-        placeholder="Kennwort — leer lassen für Abfrage">
+        placeholder="Kennwort Cockpit">
+
+      <input id="kennwortWerkzeug" type="text" class="verdeckt"
+        autocomplete="off" autocapitalize="off" spellcheck="false"
+        name="werkzeug-geraet"
+        placeholder="Kennwort Fallnummern">
+
+      <input id="kennwortSchlaf" type="text" class="verdeckt"
+        autocomplete="off" autocapitalize="off" spellcheck="false"
+        name="schlaf-geraet"
+        placeholder="Kennwort Schlafmedizin">
 
       <div class="kontoZeile">
         <span>Google-Konto</span>
@@ -274,6 +284,8 @@
   <script>
     var ORT = 'cockpit_adresse';
     var ORT_KENNWORT = 'cockpit_kennwort';
+    var ORT_KENNWORT_WERKZEUG = 'cockpit_kennwort_werkzeug';
+    var ORT_KENNWORT_SCHLAF = 'cockpit_kennwort_schlaf';
 
     /* Wird bei jedem Start zurückgesetzt - siehe starte(). */
     var schonGeantwortet = false;
@@ -302,6 +314,34 @@
       try {
         if (wert) { localStorage.setItem(ORT_KENNWORT, wert); }
         else { localStorage.removeItem(ORT_KENNWORT); }
+      } catch (ignoriert) {}
+    }
+
+    /* Fallnummern und die anderen Werkzeuge haben eigene
+       Anmeldungen - und oft ein anderes Kennwort. */
+    function werkzeugKennwortGemerkt() {
+      try { return localStorage.getItem(ORT_KENNWORT_WERKZEUG) || ''; }
+      catch (ignoriert) { return ''; }
+    }
+
+    function werkzeugKennwortMerken(wert) {
+      try {
+        if (wert) { localStorage.setItem(ORT_KENNWORT_WERKZEUG, wert); }
+        else { localStorage.removeItem(ORT_KENNWORT_WERKZEUG); }
+      } catch (ignoriert) {}
+    }
+
+    /* Der Schlafmedizin-Brief hat eine eigene Anmeldung mit einem
+       dritten Kennwort. */
+    function schlafKennwortGemerkt() {
+      try { return localStorage.getItem(ORT_KENNWORT_SCHLAF) || ''; }
+      catch (ignoriert) { return ''; }
+    }
+
+    function schlafKennwortMerken(wert) {
+      try {
+        if (wert) { localStorage.setItem(ORT_KENNWORT_SCHLAF, wert); }
+        else { localStorage.removeItem(ORT_KENNWORT_SCHLAF); }
       } catch (ignoriert) {}
     }
 
@@ -370,6 +410,10 @@
       var adresseJetzt = gemerkt() || VORGABE;
       document.getElementById('adresse').value = adresseJetzt;
       document.getElementById('kennwort').value = kennwortGemerkt();
+      document.getElementById('kennwortWerkzeug').value =
+        werkzeugKennwortGemerkt();
+      document.getElementById('kennwortSchlaf').value =
+        schlafKennwortGemerkt();
       zeigeKonto(kontoAus(adresseJetzt));
     }
 
@@ -404,8 +448,15 @@
       schonGeantwortet = true;
 
       try {
-        ev.source.postMessage(
-          { typ: 'cockpit-anmeldung', passwort: wort }, '*');
+        ev.source.postMessage({
+          typ: 'cockpit-anmeldung',
+          passwort: wort,
+          /* Das Cockpit gibt es an die Werkzeuge weiter. Ist keines
+             hinterlegt, nimmt es sein eigenes. */
+          werkzeugPasswort: werkzeugKennwortGemerkt() || wort,
+          schlafPasswort: schlafKennwortGemerkt() || ''
+        }, '*');
+
         sage('Cockpit gemeldet · Kennwort gesendet');
       } catch (ignoriert) {
         sage('Cockpit gemeldet · Senden fehlgeschlagen');
@@ -435,6 +486,10 @@
       fehler.textContent = '';
       merken(wert);
       kennwortMerken(document.getElementById('kennwort').value);
+      werkzeugKennwortMerken(
+        document.getElementById('kennwortWerkzeug').value);
+      schlafKennwortMerken(
+        document.getElementById('kennwortSchlaf').value);
       starte(wert);
     });
 

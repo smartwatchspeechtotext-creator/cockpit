@@ -12,7 +12,7 @@
    jedes Gerät die neue Fassung.
    ===================================================================== */
 
-const STAND = 'cockpit-huelle-v6';
+const STAND = 'cockpit-huelle-v8';
 
 const DATEIEN = [
   './',
