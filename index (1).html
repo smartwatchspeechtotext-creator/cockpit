@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+
+  <!--
+    HÜLLE FÜR DAS COCKPIT
+    =====================
+    Diese Seite tut fast nichts: Sie zeigt das Cockpit im Vollbild.
+
+    Warum es sie braucht: Android erkennt eine App nur auf der
+    obersten Ebene einer Seite. Apps Script liefert seine Oberfläche
+    aber immer innerhalb einer Google-Seite aus - deshalb bietet
+    Chrome dort kein "Installieren" an, egal was wir tun.
+
+    Liegt diese Datei auf einer eigenen Adresse, ist sie die oberste
+    Ebene. Chrome bietet dann "App installieren", startet ohne jede
+    Browserleiste und legt sie in den App-Umschalter.
+
+    Die Cockpit-Adresse wird beim ersten Start abgefragt und auf dem
+    Gerät gemerkt. So muss an dieser Datei nichts bearbeitet werden -
+    das ist auf einem Telefon der unangenehmste Teil.
+  -->
+
+  <title>Cockpit</title>
+
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover,
+             interactive-widget=resizes-content">
+
+  <meta name="theme-color" content="#16181c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cockpit">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="symbol-192.png">
+  <link rel="apple-touch-icon" href="symbol-192.png">
+
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #16181c;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #f4f6f9;
+    }
+
+    /* Ladeschirm - dunkel, nicht weiß. Ein weißer Blitz beim Start
+       sieht nach Webseite aus. */
+    #warten {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      background: #16181c;
+      transition: opacity .35s ease;
+    }
+
+    #warten.weg { opacity: 0; pointer-events: none; }
+
+    #warten svg {
+      width: 42px; height: 42px;
+      fill: none; stroke: #fff;
+      stroke-width: 1.7; stroke-linecap: round;
+      opacity: .9;
+    }
+
+    /* Einmalige Abfrage der Adresse. */
+    #einrichten {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      background: #16181c;
+    }
+
+    #einrichten.an { display: grid; }
+
+    .karte { width: 100%; max-width: 380px; }
+
+    .karte h1 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .karte p {
+      margin: 0 0 16px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #9aa0a8;
+    }
+
+    .karte input {
+      width: 100%;
+      padding: 13px 14px;
+      font-family: inherit;
+      font-size: 16px;
+      color: #fff;
+      background: #22252b;
+      border: 1px solid #33373e;
+      border-radius: 11px;
+      outline: none;
+    }
+
+    .karte input:focus { border-color: #4f74c8; }
+    .karte input + input { margin-top: 9px; }
+
+    .karte button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 13px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: #2864f0;
+      border: 0;
+      border-radius: 11px;
+      cursor: pointer;
+    }
+
+    .karte .fehler {
+      min-height: 18px;
+      margin-top: 9px;
+      font-size: 12px;
+      color: #e8908a;
+    }
+
+    /* Winziger Griff, um die Adresse später zu ändern. */
+    #aendern {
+      position: fixed;
+      right: 4px;
+      bottom: 4px;
+      z-index: 15;
+      width: 26px;
+      height: 26px;
+      opacity: 0;
+      background: none;
+      border: 0;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="warten">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 8.5h12M6 12h8.2M6 15.5h5.2"/>
+      <circle cx="17.2" cy="15.5" r="1.4" fill="#fff" stroke="none"/>
+    </svg>
+  </div>
+
+  <div id="einrichten">
+    <div class="karte">
+      <h1>Einmal einrichten</h1>
+      <p>Adresse und, wenn gewünscht, das Kennwort. Beides bleibt auf
+         diesem Gerät. Ein hinterlegtes Kennwort heißt: Wer das
+         entsperrte Telefon in der Hand hat, ist drin.</p>
+
+      <input id="adresse" type="url" inputmode="url"
+        autocomplete="off" autocapitalize="off" spellcheck="false"
+        placeholder="https://script.google.com/macros/s/…/exec">
+
+      <input id="kennwort" type="password" autocomplete="off"
+        placeholder="Kennwort — leer lassen für Abfrage">
+
+      <button id="speichern" type="button">Öffnen</button>
+      <div class="fehler" id="fehler"></div>
+    </div>
+  </div>
+
+  <iframe id="cockpit"
+    allow="clipboard-write; clipboard-read; microphone"
+    referrerpolicy="no-referrer-when-downgrade"></iframe>
+
+  <button id="aendern" type="button" title="Adresse ändern"
+    aria-label="Adresse ändern"></button>
+
+  <script>
+    var ORT = 'cockpit_adresse';
+    var ORT_KENNWORT = 'cockpit_kennwort';
+
+    /* Schon eingetragen - die Abfrage erscheint also gar nicht erst.
+       Sie bleibt nur für den Fall bestehen, dass sich die Adresse
+       einmal ändert: unten rechts in die Ecke tippen. */
+    var VORGABE = 'https://script.google.com/macros/s/AKfycbxlv9Nk-4y4aV-41Lsizlhe39v4xErBMtKbFtDx9XE41WVPmI_GRuShr75-JfM-ozGu/exec';
+
+    function gemerkt() {
+      try { return localStorage.getItem(ORT) || ''; }
+      catch (ignoriert) { return ''; }
+    }
+
+    function merken(wert) {
+      try { localStorage.setItem(ORT, wert); }
+      catch (ignoriert) {}
+    }
+
+    function kennwortGemerkt() {
+      try { return localStorage.getItem(ORT_KENNWORT) || ''; }
+      catch (ignoriert) { return ''; }
+    }
+
+    function kennwortMerken(wert) {
+      try {
+        if (wert) { localStorage.setItem(ORT_KENNWORT, wert); }
+        else { localStorage.removeItem(ORT_KENNWORT); }
+      } catch (ignoriert) {}
+    }
+
+    function starte(adresse) {
+      document.getElementById('einrichten').classList.remove('an');
+      document.getElementById('cockpit').src = adresse;
+    }
+
+    function frage() {
+      document.getElementById('einrichten').classList.add('an');
+      document.getElementById('warten').classList.add('weg');
+      document.getElementById('adresse').value = gemerkt() || VORGABE;
+      document.getElementById('kennwort').value = kennwortGemerkt();
+    }
+
+    document.getElementById('cockpit').addEventListener('load', function () {
+      document.getElementById('warten').classList.add('weg');
+
+      /* Ist ein Kennwort hinterlegt, wird es hineingereicht - dann
+         entfällt die Eingabe auf dem Telefon. Über eine Nachricht,
+         nicht über die Adresse: Ein Kennwort in einer URL landet in
+         Protokollen. */
+      var wort = kennwortGemerkt();
+      if (!wort) { return; }
+
+      window.setTimeout(function () {
+        try {
+          document.getElementById('cockpit').contentWindow.postMessage(
+            { typ: 'cockpit-anmeldung', passwort: wort }, '*');
+        } catch (ignoriert) {}
+      }, 400);
+    });
+
+    /* Notbremse: ein dauerhafter Ladeschirm wäre schlimmer als ein
+       zu früh weggeblendeter. */
+    window.setTimeout(function () {
+      document.getElementById('warten').classList.add('weg');
+    }, 6000);
+
+    document.getElementById('speichern').addEventListener('click', function () {
+      var wert = document.getElementById('adresse').value.trim();
+      var fehler = document.getElementById('fehler');
+
+      if (wert.indexOf('https://') !== 0) {
+        fehler.textContent = 'Die Adresse muss mit https:// beginnen.';
+        return;
+      }
+
+      if (wert.indexOf('/exec') === -1) {
+        fehler.textContent = 'Die Adresse sollte auf /exec enden.';
+        return;
+      }
+
+      fehler.textContent = '';
+      merken(wert);
+      kennwortMerken(document.getElementById('kennwort').value);
+      starte(wert);
+    });
+
+    document.getElementById('adresse').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { document.getElementById('speichern').click(); }
+    });
+
+    /* Unsichtbarer Griff unten rechts, falls sich die Adresse
+       einmal ändert - etwa nach einer neuen Bereitstellung. */
+    document.getElementById('aendern').addEventListener('click', frage);
+
+    var adresse = gemerkt() || VORGABE;
+
+    if (adresse) { starte(adresse); } else { frage(); }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
