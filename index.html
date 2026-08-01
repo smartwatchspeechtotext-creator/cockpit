@@ -124,6 +124,12 @@
     .karte input:focus { border-color: #4f74c8; }
     .karte input + input { margin-top: 9px; }
 
+    .karte input.verdeckt {
+      -webkit-text-security: disc;
+      text-security: disc;
+      letter-spacing: .12em;
+    }
+
     .karte button {
       width: 100%;
       margin-top: 10px;
@@ -180,7 +186,12 @@
         autocomplete="off" autocapitalize="off" spellcheck="false"
         placeholder="https://script.google.com/macros/s/…/exec">
 
-      <input id="kennwort" type="password" autocomplete="off"
+      <!-- Bewusst KEIN type="password": Sonst bietet Samsung Pass
+           an, es zu speichern - und meldet dann, dass es die Seite
+           nicht kennt. Die Verdeckung macht das Stylesheet. -->
+      <input id="kennwort" type="text" class="verdeckt"
+        autocomplete="off" autocapitalize="off" spellcheck="false"
+        name="cockpit-geraet"
         placeholder="Kennwort — leer lassen für Abfrage">
 
       <button id="speichern" type="button">Öffnen</button>
