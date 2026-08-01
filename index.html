@@ -186,6 +186,23 @@
       color: #e8908a;
     }
 
+    #lage {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 30;
+      padding: 7px 12px calc(7px + env(safe-area-inset-bottom));
+      font-size: 11px;
+      text-align: center;
+      color: #8d939b;
+      background: rgba(22, 24, 28, .92);
+      transition: opacity .4s ease;
+      pointer-events: none;
+    }
+
+    #lage.weg { opacity: 0; }
+
     /* Winziger Griff, um die Adresse später zu ändern. */
     #aendern {
       position: fixed;
@@ -209,6 +226,10 @@
       <circle cx="17.2" cy="15.5" r="1.4" fill="#fff" stroke="none"/>
     </svg>
   </div>
+
+  <!-- Sagt beim Start, was gerade passiert. Verschwindet nach ein
+       paar Sekunden von selbst. -->
+  <div id="lage"></div>
 
   <div id="einrichten">
     <div class="karte">
@@ -253,6 +274,9 @@
   <script>
     var ORT = 'cockpit_adresse';
     var ORT_KENNWORT = 'cockpit_kennwort';
+
+    /* Wird bei jedem Start zurückgesetzt - siehe starte(). */
+    var schonGeantwortet = false;
 
     /* Schon eingetragen - die Abfrage erscheint also gar nicht erst.
        Sie bleibt nur für den Fall bestehen, dass sich die Adresse
@@ -313,8 +337,30 @@
       }
     }
 
+    function sage(text) {
+      var el = document.getElementById('lage');
+      if (!el) { return; }
+
+      el.textContent = text;
+      el.classList.remove('weg');
+
+      clearTimeout(sage.uhr);
+      sage.uhr = window.setTimeout(function () {
+        el.classList.add('weg');
+      }, 6000);
+    }
+
     function starte(adresse) {
       document.getElementById('einrichten').classList.remove('an');
+
+      /* Für einen neuen Versuch wieder freigeben - sonst bliebe es
+         beim zweiten Anlauf stumm. */
+      schonGeantwortet = false;
+
+      sage(kennwortGemerkt()
+        ? 'Kennwort hinterlegt · warte auf das Cockpit …'
+        : 'Kein Kennwort hinterlegt · Anmeldung wie gewohnt');
+
       document.getElementById('cockpit').src = adresse;
     }
 
@@ -340,14 +386,16 @@
      * bei Googles Wrapper an, nicht beim Cockpit selbst. Auf eine
      * eingehende Nachricht dürfen wir dagegen direkt antworten.
      */
-    var schonGeantwortet = false;
+
 
     window.addEventListener('message', function (ev) {
       var d = ev && ev.data;
       if (!d || d.typ !== 'cockpit-bereit') { return; }
 
       var wort = kennwortGemerkt();
-      if (!wort || !ev.source) { return; }
+
+      if (!wort) { sage('Cockpit gemeldet · kein Kennwort hinterlegt'); return; }
+      if (!ev.source) { sage('Cockpit gemeldet · kein Rückweg'); return; }
 
       /* Das Cockpit meldet sich mehrmals, falls die erste Meldung
          zu früh kam. Antworten genügt einmal - sonst liefen mehrere
@@ -358,7 +406,10 @@
       try {
         ev.source.postMessage(
           { typ: 'cockpit-anmeldung', passwort: wort }, '*');
-      } catch (ignoriert) {}
+        sage('Cockpit gemeldet · Kennwort gesendet');
+      } catch (ignoriert) {
+        sage('Cockpit gemeldet · Senden fehlgeschlagen');
+      }
     });
 
     /* Notbremse: ein dauerhafter Ladeschirm wäre schlimmer als ein
