@@ -22,7 +22,7 @@
     das ist auf einem Telefon der unangenehmste Teil.
   -->
 
-  <title>Cockpit</title>
+  <title>Fällig</title>
 
 
   <!-- Verbindung zu Google schon aufbauen, bevor der Rahmen sie
@@ -42,11 +42,11 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Cockpit">
+  <meta name="apple-mobile-web-app-title" content="Fällig">
 
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="symbol-192.png">
-  <link rel="apple-touch-icon" href="symbol-192.png">
+  <link rel="manifest" href="faellig.webmanifest">
+  <link rel="icon" href="faellig-192.png">
+  <link rel="apple-touch-icon" href="faellig-192.png">
 
   <style>
     html, body {
@@ -247,7 +247,7 @@
 
   <div id="einrichten">
     <div class="karte">
-      <h1>Einmal einrichten</h1>
+      <h1>Fällig-Ansicht</h1>
       <p>Beides bleibt auf diesem Gerät. Lädt die Seite nur im
          Privatmodus, hilft eine andere Kontonummer unten —
          der Reihe nach ausprobieren.</p>
@@ -425,10 +425,12 @@
 
         ziel += trenner + 'k=' + encodeURIComponent(wort) +
                 '&kw=' + encodeURIComponent(werkzeugKennwortGemerkt() || wort) +
-                '&ks=' + encodeURIComponent(schlafKennwortGemerkt() || '');
+                '&ks=' + encodeURIComponent(schlafKennwortGemerkt() || '') +
+                '&nur=faellig';
 
         sage('Kennwörter hinterlegt · melde an …');
       } else {
+        ziel += (ziel.indexOf('?') === -1 ? '?' : '&') + 'nur=faellig';
         sage('Kein Kennwort hinterlegt · Anmeldung wie gewohnt');
       }
 

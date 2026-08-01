@@ -12,7 +12,7 @@
    jedes Gerät die neue Fassung.
    ===================================================================== */
 
-const STAND = 'cockpit-huelle-v10';
+const STAND = 'cockpit-huelle-v13';
 
 const DATEIEN = [
   './',
@@ -20,7 +20,12 @@ const DATEIEN = [
   './manifest.webmanifest',
   './symbol-192.png',
   './symbol-512.png',
-  './symbol-maskierbar.png'
+  './symbol-maskierbar.png',
+  './faellig.html',
+  './faellig.webmanifest',
+  './faellig-192.png',
+  './faellig-512.png',
+  './faellig-maskierbar.png'
 ];
 
 self.addEventListener('install', function (ereignis) {
