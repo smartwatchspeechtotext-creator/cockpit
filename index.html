@@ -144,6 +144,41 @@
       cursor: pointer;
     }
 
+    /* Bist du in Chrome mit mehreren Google-Konten angemeldet,
+       muss der Browser raten, welches gemeint ist - und rät falsch.
+       Die Ziffer in der Adresse nagelt es fest. */
+    .kontoZeile {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #9aa0a8;
+    }
+
+    .kontoZeile span { flex: 1; }
+
+    .kontoKnopf {
+      width: auto;
+      min-width: 30px;
+      margin: 0;
+      padding: 7px 9px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cdd2d8;
+      background: #22252b;
+      border: 1px solid #33373e;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .kontoKnopf.aktiv {
+      color: #fff;
+      background: #2864f0;
+      border-color: #2864f0;
+    }
+
     .karte .fehler {
       min-height: 18px;
       margin-top: 9px;
@@ -178,9 +213,9 @@
   <div id="einrichten">
     <div class="karte">
       <h1>Einmal einrichten</h1>
-      <p>Adresse und, wenn gewünscht, das Kennwort. Beides bleibt auf
-         diesem Gerät. Ein hinterlegtes Kennwort heißt: Wer das
-         entsperrte Telefon in der Hand hat, ist drin.</p>
+      <p>Beides bleibt auf diesem Gerät. Lädt die Seite nur im
+         Privatmodus, hilft eine andere Kontonummer unten —
+         der Reihe nach ausprobieren.</p>
 
       <input id="adresse" type="url" inputmode="url"
         autocomplete="off" autocapitalize="off" spellcheck="false"
@@ -193,6 +228,15 @@
         autocomplete="off" autocapitalize="off" spellcheck="false"
         name="cockpit-geraet"
         placeholder="Kennwort — leer lassen für Abfrage">
+
+      <div class="kontoZeile">
+        <span>Google-Konto</span>
+        <button type="button" data-konto="" class="kontoKnopf">ohne</button>
+        <button type="button" data-konto="0" class="kontoKnopf">0</button>
+        <button type="button" data-konto="1" class="kontoKnopf">1</button>
+        <button type="button" data-konto="2" class="kontoKnopf">2</button>
+        <button type="button" data-konto="3" class="kontoKnopf">3</button>
+      </div>
 
       <button id="speichern" type="button">Öffnen</button>
       <div class="fehler" id="fehler"></div>
@@ -237,6 +281,38 @@
       } catch (ignoriert) {}
     }
 
+    /*
+     * Setzt oder entfernt die Kontonummer in der Adresse.
+     *
+     *   ohne:  https://script.google.com/macros/s/…/exec
+     *   0:     https://script.google.com/u/0/macros/s/…/exec
+     *
+     * Welche Ziffer passt, haengt davon ab, an wievielter Stelle das
+     * Konto angemeldet ist, dem das Skript gehoert. Ausprobieren ist
+     * schneller als nachschlagen - deshalb die Knoepfe.
+     */
+    function mitKonto(adresse, nummer) {
+      var ohne = String(adresse || '')
+        .replace(/(script\.google\.com)\/u\/\d+\//, '$1/');
+
+      if (nummer === '' || nummer === null) { return ohne; }
+
+      return ohne.replace(/(script\.google\.com)\//, '$1/u/' + nummer + '/');
+    }
+
+    function kontoAus(adresse) {
+      var g = String(adresse || '').match(/script\.google\.com\/u\/(\d+)\//);
+      return g ? g[1] : '';
+    }
+
+    function zeigeKonto(nummer) {
+      var knoepfe = document.querySelectorAll('.kontoKnopf');
+      for (var i = 0; i < knoepfe.length; i++) {
+        knoepfe[i].classList.toggle('aktiv',
+          knoepfe[i].dataset.konto === String(nummer));
+      }
+    }
+
     function starte(adresse) {
       document.getElementById('einrichten').classList.remove('an');
       document.getElementById('cockpit').src = adresse;
@@ -245,26 +321,44 @@
     function frage() {
       document.getElementById('einrichten').classList.add('an');
       document.getElementById('warten').classList.add('weg');
-      document.getElementById('adresse').value = gemerkt() || VORGABE;
+      var adresseJetzt = gemerkt() || VORGABE;
+      document.getElementById('adresse').value = adresseJetzt;
       document.getElementById('kennwort').value = kennwortGemerkt();
+      zeigeKonto(kontoAus(adresseJetzt));
     }
 
     document.getElementById('cockpit').addEventListener('load', function () {
       document.getElementById('warten').classList.add('weg');
+    });
 
-      /* Ist ein Kennwort hinterlegt, wird es hineingereicht - dann
-         entfällt die Eingabe auf dem Telefon. Über eine Nachricht,
-         nicht über die Adresse: Ein Kennwort in einer URL landet in
-         Protokollen. */
+    /*
+     * Das Cockpit meldet sich, sobald es bereit ist - wir antworten
+     * mit dem Kennwort.
+     *
+     * Diese Richtung ist nötig, weil Apps Script die Seite in einem
+     * verschachtelten Rahmen ausliefert: Wir kämen von uns aus nur
+     * bei Googles Wrapper an, nicht beim Cockpit selbst. Auf eine
+     * eingehende Nachricht dürfen wir dagegen direkt antworten.
+     */
+    var schonGeantwortet = false;
+
+    window.addEventListener('message', function (ev) {
+      var d = ev && ev.data;
+      if (!d || d.typ !== 'cockpit-bereit') { return; }
+
       var wort = kennwortGemerkt();
-      if (!wort) { return; }
+      if (!wort || !ev.source) { return; }
 
-      window.setTimeout(function () {
-        try {
-          document.getElementById('cockpit').contentWindow.postMessage(
-            { typ: 'cockpit-anmeldung', passwort: wort }, '*');
-        } catch (ignoriert) {}
-      }, 400);
+      /* Das Cockpit meldet sich mehrmals, falls die erste Meldung
+         zu früh kam. Antworten genügt einmal - sonst liefen mehrere
+         Anmeldungen gleichzeitig. */
+      if (schonGeantwortet) { return; }
+      schonGeantwortet = true;
+
+      try {
+        ev.source.postMessage(
+          { typ: 'cockpit-anmeldung', passwort: wort }, '*');
+      } catch (ignoriert) {}
     });
 
     /* Notbremse: ein dauerhafter Ladeschirm wäre schlimmer als ein
@@ -296,6 +390,17 @@
     document.getElementById('adresse').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { document.getElementById('speichern').click(); }
     });
+
+    /* Kontoknöpfe schreiben die Adresse um - sofort sichtbar. */
+    var knoepfe = document.querySelectorAll('.kontoKnopf');
+
+    for (var i = 0; i < knoepfe.length; i++) {
+      knoepfe[i].addEventListener('click', function () {
+        var feld = document.getElementById('adresse');
+        feld.value = mitKonto(feld.value, this.dataset.konto);
+        zeigeKonto(this.dataset.konto);
+      });
+    }
 
     /* Unsichtbarer Griff unten rechts, falls sich die Adresse
        einmal ändert - etwa nach einer neuen Bereitstellung. */
