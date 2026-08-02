@@ -230,6 +230,17 @@
       text-decoration: underline;
       text-underline-offset: 3px;
     }
+    /* Der Notausgang - vorhanden, aber nicht laut. */
+    #frisch {
+      margin-top: 8px;
+      background: none;
+      border: 1px solid rgba(255, 255, 255, .16);
+      color: rgba(255, 255, 255, .55);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #frisch:active { color: #fff; }
   </style>
 </head>
 
@@ -284,6 +295,17 @@
       </div>
 
       <button id="speichern" type="button">Öffnen</button>
+
+      <!-- Notausgang. Bleibt das Telefon in einer alten Fassung
+           hängen, räumt das hier alles weg: den Speicher der Hülle
+           und den Hintergrunddienst selbst. Danach lädt die Seite
+           frisch von GitHub.
+
+           Kennwörter und Adresse bleiben - die liegen woanders. -->
+      <button id="frisch" type="button" class="leise">
+        Zwischenspeicher leeren und neu laden
+      </button>
+
       <div class="fehler" id="fehler"></div>
     </div>
   </div>
@@ -543,6 +565,47 @@
        Sie liegt nur wenige Sekunden über dem Bild und verschwindet
        dann samt ihrer Klickfläche. */
     document.getElementById('lage').addEventListener('click', frage);
+
+    /*
+     * Notausgang: Speicher der Hülle weg, Hintergrunddienst weg,
+     * dann frisch laden.
+     *
+     * Das Cockpit liegt nicht im Speicher - hier verschwindet also
+     * nur die Hülle. Adresse und Kennwörter bleiben, die stehen im
+     * localStorage und werden nicht angefasst.
+     */
+    document.getElementById('frisch').addEventListener('click', function () {
+      var knopf = document.getElementById('frisch');
+      knopf.disabled = true;
+      knopf.textContent = 'Räume auf …';
+
+      var schritte = [];
+
+      try {
+        if (window.caches && caches.keys) {
+          schritte.push(caches.keys().then(function (namen) {
+            return Promise.all(namen.map(function (n) { return caches.delete(n); }));
+          }));
+        }
+      } catch (ignoriert) {}
+
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          schritte.push(
+            navigator.serviceWorker.getRegistrations().then(function (liste) {
+              return Promise.all(liste.map(function (r) { return r.unregister(); }));
+            })
+          );
+        }
+      } catch (ignoriert) {}
+
+      Promise.all(schritte).catch(function () {}).then(function () {
+        /* Mit Zeitstempel, damit auch der Browser-Zwischenspeicher
+           nicht die alte Seite herausgibt. */
+        var ziel = location.pathname + '?frisch=' + Date.now();
+        location.replace(ziel);
+      });
+    });
 
     var adresse = gemerkt() || VORGABE;
 
