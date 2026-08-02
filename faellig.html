@@ -445,7 +445,16 @@
       }
     }
 
-    function sage(text) {
+    /*
+     * Die Statuszeile.
+     *
+     * `bleibt` heisst: nicht von selbst verschwinden. Gebraucht wird
+     * das genau in einem Fall - wenn kein Kennwort hinterlegt ist.
+     * Dann ist diese Zeile der einzige Weg in die Einstellungen, und
+     * nach acht Sekunden war sie weg. Wer nicht wusste, dass man sie
+     * antippen kann, kam nicht mehr an die Eingabe heran.
+     */
+    function sage(text, bleibt) {
       var el = document.getElementById('lage');
       if (!el) { return; }
 
@@ -454,6 +463,8 @@
       el.classList.add('tippbar');
 
       clearTimeout(sage.uhr);
+      if (bleibt) { return; }
+
       sage.uhr = window.setTimeout(function () {
         el.classList.add('weg');
         el.classList.remove('tippbar');
@@ -506,7 +517,9 @@
         sage('Kennwörter hinterlegt · melde an …');
       } else {
         ziel += (ziel.indexOf('?') === -1 ? '?' : '&') + 'nur=faellig';
-        sage('Kein Kennwort hinterlegt · Anmeldung wie gewohnt');
+        /* Bleibt stehen - siehe sage(). Ohne Kennwort ist das der
+           einzige Weg zurück in die Einrichtung. */
+        sage('Kein Kennwort hinterlegt · Anmeldung wie gewohnt', true);
       }
 
       document.getElementById('cockpit').src = ziel;
@@ -530,8 +543,12 @@
 
       /* Kurz zeigen, WELCHE Bereitstellung geladen wurde. Steht auf
          zwei Geräten Verschiedenes, ist die Ursache damit gefunden,
-         ohne dass man erst die Einstellungen öffnen muss. */
-      sage('Cockpit ' + kennungJetzt);
+         ohne dass man erst die Einstellungen öffnen muss.
+
+         Fehlt das Kennwort, bleibt stattdessen die Meldung von oben
+         stehen - die ist dann das Wichtigere. */
+      sage('Cockpit ' + kennungJetzt + (kennwortGemerkt()
+        ? '' : ' · kein Kennwort hinterlegt'), !kennwortGemerkt());
     });
 
     /*

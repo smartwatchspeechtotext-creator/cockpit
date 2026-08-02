@@ -41,7 +41,7 @@
    mehr.
    ===================================================================== */
 
-const STAND = 'cockpit-huelle-v14';
+const STAND = 'cockpit-huelle-v15';
 
 /*
  * Zwei Listen statt einer.
@@ -126,11 +126,30 @@ self.addEventListener('fetch', function (ereignis) {
     return antwort;
   }
 
-  /* Seiten: erst das Netz. So kommt eine geänderte Hülle sofort an. */
+  /*
+   * Seiten: erst das Netz. So kommt eine geänderte Hülle sofort an.
+   *
+   * Eine 404 gilt dabei als Ausfall, nicht als Antwort. Das ist der
+   * Unterschied, der beim Abschalten von GitHub Pages zählt: Der
+   * Server antwortet ja - nur mit einer Fehlerseite. Ohne diese
+   * Prüfung würde die brav durchgereicht, und die App wäre weg,
+   * obwohl die Hülle vollständig auf dem Gerät liegt.
+   *
+   * Jetzt springt in dem Fall der Speicher ein. Ist GitHub aus,
+   * fehlerhaft oder gerade beim Neubauen, läuft die App weiter.
+   */
   if (istSeite) {
     ereignis.respondWith(
       fetch(anfrage)
-        .then(ablegen)
+        .then(function (antwort) {
+          if (!antwort || !antwort.ok) {
+            return caches.match(anfrage).then(function (gefunden) {
+              return gefunden || caches.match('./index.html') || antwort;
+            });
+          }
+
+          return ablegen(antwort);
+        })
         .catch(function () {
           return caches.match(anfrage).then(function (gefunden) {
             return gefunden || caches.match('./index.html');
