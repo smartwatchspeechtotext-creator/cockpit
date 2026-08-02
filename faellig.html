@@ -327,7 +327,41 @@
     /* Schon eingetragen - die Abfrage erscheint also gar nicht erst.
        Sie bleibt nur für den Fall bestehen, dass sich die Adresse
        einmal ändert: unten rechts in die Ecke tippen. */
-    var VORGABE = 'https://script.google.com/macros/s/AKfycbxlv9Nk-4y4aV-41Lsizlhe39v4xErBMtKbFtDx9XE41WVPmI_GRuShr75-JfM-ozGu/exec';
+    var VORGABE = 'https://script.google.com/macros/s/AKfycbw8yFUfSCVItuGbcc_r3wNxPPS7ZW2HaNmHudgBIk27MFHTXPGEMh95J1v3iCXABGk/exec';
+
+    /*
+     * Abgelöste Bereitstellungen.
+     *
+     * Genau hier lag der Fehler: Die gemerkte Adresse schlägt die
+     * Vorgabe (`gemerkt() || VORGABE`). Eine neue Vorgabe erreicht
+     * damit kein Gerät, auf dem schon einmal etwas gespeichert
+     * wurde - das Telefon zeigte weiter das alte Cockpit.
+     *
+     * Steht eine dieser Kennungen im Gerätespeicher, wird sie durch
+     * die Vorgabe ersetzt. Verglichen wird die Kennung, nicht die
+     * ganze Adresse: Die Kontowahl (/u/0/, /u/1/ …) gehört zum
+     * Gerät und bleibt erhalten.
+     *
+     * Eine von Hand eingetragene, unbekannte Adresse bleibt
+     * unangetastet.
+     */
+    var ABGELOEST = [
+      'AKfycbxlv9Nk-4y4aV-41Lsizlhe39v4xErBMtKbFtDx9XE41WVPmI_GRuShr75-JfM-ozGu'
+    ];
+
+    function kennungAus(adresse) {
+      var g = String(adresse || '').match(/\/macros\/s\/([^/]+)\//);
+      return g ? g[1] : '';
+    }
+
+    function aufAktuelleBereitstellung(adresse) {
+      var kennung = kennungAus(adresse);
+      if (!kennung || ABGELOEST.indexOf(kennung) === -1) { return adresse; }
+
+      var frisch = mitKonto(VORGABE, kontoAus(adresse));
+      merken(frisch);
+      return frisch;
+    }
 
     function gemerkt() {
       try { return localStorage.getItem(ORT) || ''; }
@@ -481,7 +515,7 @@
     function frage() {
       document.getElementById('einrichten').classList.add('an');
       document.getElementById('warten').classList.add('weg');
-      var adresseJetzt = gemerkt() || VORGABE;
+      var adresseJetzt = aufAktuelleBereitstellung(gemerkt() || VORGABE);
       document.getElementById('adresse').value = adresseJetzt;
       document.getElementById('kennwort').value = kennwortGemerkt();
       document.getElementById('kennwortWerkzeug').value =
@@ -633,7 +667,7 @@
       });
     });
 
-    var adresse = gemerkt() || VORGABE;
+    var adresse = aufAktuelleBereitstellung(gemerkt() || VORGABE);
 
     if (adresse) { starte(adresse); } else { frage(); }
 
