@@ -426,6 +426,15 @@
       }, 8000);
     }
 
+    /* Die letzten Zeichen der Bereitstellungs-Kennung - genug, um
+       zwei Geräte zu vergleichen, zu wenig, um etwas zu verraten. */
+    var kennungJetzt = '';
+
+    function merkeKennung(adresse) {
+      var g = String(adresse || '').match(/\/macros\/s\/([^/]+)\//);
+      kennungJetzt = g ? '…' + g[1].slice(-6) : '?';
+    }
+
     function starte(adresse) {
       document.getElementById('einrichten').classList.remove('an');
 
@@ -441,6 +450,16 @@
        */
       var wort = kennwortGemerkt();
       var ziel = adresse;
+
+      /*
+       * Kennung der Bereitstellung anzeigen.
+       *
+       * Genau daran hing die Suche: Auf dem Telefon stand eine
+       * andere Fassung als im Browser - und man sah es nirgends.
+       * Die letzten Zeichen der Adresse reichen zum Vergleichen und
+       * verraten nichts; die Kennwörter bleiben ohnehin draußen.
+       */
+      merkeKennung(adresse);
 
       if (wort) {
         var trenner = ziel.indexOf('?') === -1 ? '?' : '&';
@@ -474,6 +493,11 @@
 
     document.getElementById('cockpit').addEventListener('load', function () {
       document.getElementById('warten').classList.add('weg');
+
+      /* Kurz zeigen, WELCHE Bereitstellung geladen wurde. Steht auf
+         zwei Geräten Verschiedenes, ist die Ursache damit gefunden,
+         ohne dass man erst die Einstellungen öffnen muss. */
+      sage('Cockpit ' + kennungJetzt);
     });
 
     /*
